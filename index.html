@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora Práctica #4 Clis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RESET & TOKENS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Palette */
+      --ink-0:  #04060b;
+      --ink-1:  #090d16;
+      --ink-2:  #0f1420;
+      --ink-3:  #141c2e;
+      --ink-4:  #1c2640;
+      --ink-5:  #243050;
+
+      --num-bg:    #131b2e;
+      --num-bg-h:  #1a2540;
+      --num-bg-a:  #111929;
+
+      --op-bg:     #0b1e3a;
+      --op-bg-h:   #0f2850;
+      --op-active: #0d2d58;
+
+      --clr-bg:    #160916;
+      --clr-bg-h:  #c0284a;
+
+      --eq-bg:     #0050d8;
+      --eq-bg-h:   #1060e8;
+
+      --aqua:   #00e5ff;
+      --ice:    #b0d8ff;
+      --white:  #f0f6ff;
+      --dim:    #3a5070;
+      --dimmer: #1e3050;
+      --red:    #ff3860;
+
+      --border: rgba(0, 229, 255, .09);
+      --glow-a: rgba(0, 229, 255, .25);
+      --glow-b: rgba(0, 80, 216, .45);
+
+      --r-card: 20px;
+      --r-btn:  14px;
+      --gap:    10px;
+      --ease:   cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       BODY & SCENE
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    html { height: 100%; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--ink-0);
+      font-family: 'Syne', sans-serif;
+      padding: 40px 24px;   /* generous padding so card never hugs viewport */
+    }
+
+    /* Layered background atmosphere */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 55% 45% at 20% 25%, rgba(0,80,216,.13) 0%, transparent 70%),
+        radial-gradient(ellipse 45% 55% at 82% 80%, rgba(0,229,255,.07) 0%, transparent 65%),
+        radial-gradient(ellipse 30% 30% at 55% 50%, rgba(100,0,200,.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Fine grid texture */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       WRAPPER
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .scene {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 420px;
+      animation: rise .65s cubic-bezier(.16,1,.3,1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(36px) scale(.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       CARD
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .card {
+      width: 100%;
+      background: var(--ink-2);
+      border-radius: var(--r-card);
+      border: 1px solid var(--border);
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.6),
+        0 40px 100px rgba(0,0,0,.85),
+        0 0 60px rgba(0,80,216,.06),
+        inset 0 1px 0 rgba(255,255,255,.035);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Scan-line sheen on top edge */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--aqua), transparent);
+      opacity: .3;
+    }
+
+    /* ── Header ── */
+    .hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .hd-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 30px; height: 30px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #0050d8, #7c22e8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 0 16px rgba(0,80,216,.55);
+      flex-shrink: 0;
+    }
+    .title-block { display: flex; flex-direction: column; gap: 1px; }
+    .calc-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--ice);
+      line-height: 1;
+    }
+    .calc-sub {
+      font-size: 9px;
+      font-weight: 400;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; box-shadow: 0 0 8px rgba(40,200,64,.7); animation: blink 3s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 60%{opacity:.2} }
+
+    /* ── Display ── */
+    .display {
+      background: var(--ink-1);
+      border: 1px solid rgba(0,229,255,.07);
+      border-radius: 14px;
+      padding: 16px 20px 18px;
+      margin-bottom: 18px;
+      min-height: 112px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .display::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(150deg, rgba(0,229,255,.018) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .disp-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .disp-tag {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+    .disp-expr {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 300;
+      color: var(--dim);
+      text-align: right;
+      min-height: 16px;
+      letter-spacing: .03em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 75%;
+      transition: color .2s;
+    }
+    .disp-val {
+      font-family: 'DM Mono', monospace;
+      font-weight: 400;
+      font-size: clamp(32px, 10vw, 50px);
+      color: var(--white);
+      text-align: right;
+      line-height: 1;
+      letter-spacing: -.03em;
+      transition: color .15s, text-shadow .15s;
+      word-break: break-all;
+      overflow: hidden;
+    }
+    .disp-val.state-result {
+      color: var(--aqua);
+      text-shadow: 0 0 30px rgba(0,229,255,.5);
+    }
+    .disp-val.state-error {
+      color: var(--red) !important;
+      font-size: 22px !important;
+      text-shadow: 0 0 20px rgba(255,56,96,.5) !important;
+    }
+    .disp-val.anim-pop {
+      animation: pop .22s var(--ease);
+    }
+    @keyframes pop {
+      0%  { transform: scale(1.06); }
+      100%{ transform: scale(1); }
+    }
+
+    /* ── Divider ── */
+    .rule {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin-bottom: 16px;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       KEYPAD
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--gap);
+    }
+
+    /* ── Base button ── */
+    button {
+      all: unset;
+      cursor: pointer;
+      height: 64px;
+      border-radius: var(--r-btn);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 20px;
+      color: var(--ice);
+      background: var(--num-bg);
+      border: 1px solid rgba(255,255,255,.04);
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        background .1s var(--ease),
+        transform  .09s var(--ease),
+        box-shadow .14s var(--ease),
+        border-color .14s var(--ease);
+    }
+    button:hover  { background: var(--num-bg-h); }
+    button:active { background: var(--num-bg-a); transform: scale(.88); }
+    .span2 { grid-column: span 2; }
+
+    /* Clear */
+    .btn-c {
+      background: var(--clr-bg);
+      color: #d0607a;
+      border-color: rgba(255,56,96,.07);
+    }
+    .btn-c:hover {
+      background: var(--clr-bg-h);
+      color: #fff;
+      border-color: rgba(255,56,96,.4);
+      box-shadow: 0 0 22px rgba(192,40,74,.45);
+    }
+    .btn-c:active { background: #a02040; transform: scale(.88); }
+
+    /* Operators */
+    .btn-op {
+      background: var(--op-bg);
+      color: var(--aqua);
+      border-color: rgba(0,229,255,.07);
+      font-size: 22px;
+    }
+    .btn-op:hover {
+      background: var(--op-bg-h);
+      border-color: rgba(0,229,255,.22);
+      box-shadow: 0 0 14px rgba(0,229,255,.1);
+    }
+    .btn-op:active { background: #0a2248; transform: scale(.88); }
+    .btn-op.is-active {
+      background: var(--op-active);
+      border-color: rgba(0,229,255,.4);
+      box-shadow: 0 0 20px rgba(0,229,255,.22), inset 0 0 16px rgba(0,229,255,.06);
+      color: #fff;
+    }
+
+    /* Equals */
+    .btn-eq {
+      background: var(--eq-bg);
+      color: #fff;
+      font-size: 26px;
+      border-color: rgba(0,80,216,.5);
+      box-shadow: 0 4px 22px rgba(0,80,216,.5), inset 0 1px 0 rgba(255,255,255,.1);
+    }
+    .btn-eq:hover {
+      background: var(--eq-bg-h);
+      box-shadow: 0 6px 30px rgba(0,80,216,.7), inset 0 1px 0 rgba(255,255,255,.15);
+    }
+    .btn-eq:active { background: #003ab0; transform: scale(.88); }
+
+    /* Ripple */
+    .rpl {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      background: rgba(255,255,255,.09);
+      pointer-events: none;
+      animation: rpl-anim .5s linear;
+    }
+    @keyframes rpl-anim { to { transform: scale(6); opacity: 0; } }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       FOOTER
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .footer {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .footer-prog {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .footer-name {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, var(--aqua) 0%, #60a0ff 50%, #a060ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  </style>
+</head>
+<body>
+
+<div class="scene">
+
+  <div class="card">
+
+    <!-- Header -->
+    <div class="hd">
+      <div class="hd-left">
+        <div class="logo">⌁</div>
+        <div class="title-block">
+          <span class="calc-title">Calc Pro #4</span>
+          <span class="calc-sub">Práctica · CLIS</span>
+        </div>
+      </div>
+      <div class="dots">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="display">
+      <div class="disp-top">
+        <span class="disp-tag">output</span>
+        <span class="disp-expr" id="js-expr">&nbsp;</span>
+      </div>
+      <div class="disp-val" id="js-val">0</div>
+    </div>
+
+    <div class="rule"></div>
+
+    <!-- Keypad -->
+    <div class="keypad" id="js-pad">
+
+      <!-- Row 1 -->
+      <button class="btn-c span2" data-fn="clear">C</button>
+      <button class="btn-op"      data-fn="back"  style="font-size:18px">⌫</button>
+      <button class="btn-op"      data-fn="op"    data-op="/">÷</button>
+
+      <!-- Row 2 -->
+      <button data-fn="num" data-n="7">7</button>
+      <button data-fn="num" data-n="8">8</button>
+      <button data-fn="num" data-n="9">9</button>
+      <button class="btn-op" data-fn="op" data-op="*">×</button>
+
+      <!-- Row 3 -->
+      <button data-fn="num" data-n="4">4</button>
+      <button data-fn="num" data-n="5">5</button>
+      <button data-fn="num" data-n="6">6</button>
+      <button class="btn-op" data-fn="op" data-op="-">−</button>
+
+      <!-- Row 4 -->
+      <button data-fn="num" data-n="1">1</button>
+      <button data-fn="num" data-n="2">2</button>
+      <button data-fn="num" data-n="3">3</button>
+      <button class="btn-op" data-fn="op" data-op="+">+</button>
+
+      <!-- Row 5 -->
+      <button data-fn="sign">±</button>
+      <button data-fn="num" data-n="0">0</button>
+      <button data-fn="dot">.</button>
+      <button class="btn-eq" data-fn="eq">=</button>
+
+    </div><!-- /keypad -->
+  </div><!-- /card -->
+
+  <!-- Footer -->
+  <div class="footer">
+    <span class="footer-prog">Master Ingeniería de Software en la Era IA</span>
+    <span class="footer-name">· Marlene Faria ·</span>
+  </div>
+
+</div><!-- /scene -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CALCULADORA — lógica limpia, sin ambigüedades
+   Estado principal:
+     accumulator  → primer operando (número)
+     pendingOp    → operador pendiente ('+','-','*','/')
+     inputStr     → cadena que se está construyendo
+     freshInput   → true = el próximo dígito reemplaza inputStr
+   ═══════════════════════════════════════════════════════════ */
+'use strict';
+
+(function () {
+
+  /* ── refs ── */
+  const $val  = document.getElementById('js-val');
+  const $expr = document.getElementById('js-expr');
+  const $pad  = document.getElementById('js-pad');
+
+  /* ── estado ── */
+  let accumulator = null;   // primer operando
+  let pendingOp   = null;   // operador pendiente
+  let inputStr    = '0';    // cadena visible en pantalla
+  let freshInput  = false;  // si true, el próximo dígito borra inputStr
+  let isError     = false;
+
+  /* ── constantes ── */
+  const MAX_LEN = 12;
+  const SYM = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+
+  /* ═══════════════ utilidades ════════════════ */
+
+  function toDisplay(n) {
+    if (!isFinite(n)) return 'Error';
+    // cortar ruido de punto flotante: 0.1+0.2 → 0.3
+    const s = +n.toPrecision(10);
+    // si demasiado largo en notación fija, usar toPrecision(8)
+    const str = String(s);
+    return str.length > MAX_LEN ? String(+n.toPrecision(8)) : str;
+  }
+
+  function setVal(txt) {
+    $val.textContent = txt;
+  }
+
+  function setExpr(txt) {
+    $expr.textContent = txt || '\u00a0';
+  }
+
+  /* ── resaltar operador activo ── */
+  function clearOpHL() {
+    $pad.querySelectorAll('.btn-op.is-active')
+        .forEach(b => b.classList.remove('is-active'));
+  }
+  function hlOp(op) {
+    clearOpHL();
+    const btn = $pad.querySelector(`.btn-op[data-op="${op}"]`);
+    if (btn) btn.classList.add('is-active');
+  }
+
+  /* ── clases de estado en display ── */
+  function clearStateClasses() {
+    $val.classList.remove('state-result', 'state-error', 'anim-pop');
+  }
+
+  /* ── mostrar error ── */
+  function showError(msg) {
+    clearStateClasses();
+    $val.classList.add('state-error');
+    $val.textContent = msg;
+    $expr.textContent = '\u00a0';
+    inputStr    = msg;
+    accumulator = null;
+    pendingOp   = null;
+    freshInput  = false;
+    isError     = true;
+    clearOpHL();
+  }
+
+  /* ═══════════════ operación ════════════════ */
+
+  function applyOp(a, b, op) {
+    const fa = parseFloat(a);
+    const fb = parseFloat(b);
+    switch (op) {
+      case '+': return fa + fb;
+      case '-': return fa - fb;
+      case '*': return fa * fb;
+      case '/':
+        if (fb === 0) throw new RangeError('División por 0');
+        return fa / fb;
+    }
+    throw new Error('Operador desconocido');
+  }
+
+  /* ═══════════════ handlers ════════════════ */
+
+  /* DÍGITO */
+  function onNum(d) {
+    if (isError) {
+      // salir del estado de error
+      isError     = false;
+      inputStr    = d;
+      freshInput  = false;
+      clearStateClasses();
+      setVal(inputStr);
+      return;
+    }
+    clearStateClasses();
+
+    if (freshInput) {
+      // empieza número nuevo — reemplaza pantalla
+      inputStr   = d;
+      freshInput = false;
+    } else {
+      // append — pero sin superar MAX_LEN dígitos (sin contar '-' y '.')
+      const digits = inputStr.replace(/[^0-9]/g, '').length;
+      if (digits >= MAX_LEN) return;
+      inputStr = (inputStr === '0') ? d : inputStr + d;
+    }
+    setVal(inputStr);
+  }
+
+  /* PUNTO DECIMAL */
+  function onDot() {
+    if (isError) return;
+    clearStateClasses();
+    if (freshInput) {
+      inputStr   = '0.';
+      freshInput = false;
+      setVal(inputStr);
+      return;
+    }
+    if (!inputStr.includes('.')) {
+      inputStr += '.';
+      setVal(inputStr);
+    }
+  }
+
+  /* SIGNO ± */
+  function onSign() {
+    if (isError || inputStr === '0') return;
+    clearStateClasses();
+    inputStr = inputStr.startsWith('-')
+      ? inputStr.slice(1)
+      : '-' + inputStr;
+    setVal(inputStr);
+  }
+
+  /* OPERADOR */
+  function onOp(op) {
+    if (isError) return;
+    clearStateClasses();
+
+    /*
+     * Si hay operación pendiente Y el usuario ya tecleó un segundo número
+     * (freshInput === false significa que inputStr fue modificado tras el
+     * último onOp), evaluamos primero para encadenar.
+     * Si freshInput === true, el usuario cambió de operador sin teclear
+     * segundo número → sólo actualizamos el operador pendiente.
+     */
+    if (pendingOp !== null && !freshInput) {
+      try {
+        const result    = applyOp(accumulator, inputStr, pendingOp);
+        accumulator     = result;
+        inputStr        = toDisplay(result);
+      } catch (e) {
+        showError('DIV/0  ERR');
+        return;
+      }
+    } else if (pendingOp === null) {
+      // primer operador: guardamos el número actual como acumulador
+      accumulator = parseFloat(inputStr);
+    }
+    // si pendingOp !== null && freshInput → sólo cambiamos el operador
+
+    pendingOp  = op;
+    freshInput = true;   // el próximo dígito empieza número nuevo
+
+    setVal(toDisplay(accumulator));
+    setExpr(`${toDisplay(accumulator)}  ${SYM[op]}`);
+    hlOp(op);
+  }
+
+  /* IGUAL */
+  function onEq() {
+    if (isError) return;
+    if (pendingOp === null || accumulator === null) return;
+
+    const secondStr = inputStr;
+    try {
+      const result = applyOp(accumulator, secondStr, pendingOp);
+      const rStr   = toDisplay(result);
+
+      setExpr(`${toDisplay(accumulator)}  ${SYM[pendingOp]}  ${secondStr}  =`);
+
+      inputStr    = rStr;
+      accumulator = null;
+      pendingOp   = null;
+      freshInput  = true;   // próximo dígito empieza desde cero
+
+      clearOpHL();
+      clearStateClasses();
+      $val.classList.add('state-result');
+      setVal(rStr);
+      // animación pop
+      void $val.offsetWidth;
+      $val.classList.add('anim-pop');
+    } catch (e) {
+      showError('DIV/0  ERR');
+    }
+  }
+
+  /* BACKSPACE */
+  function onBack() {
+    if (isError) { onClear(); return; }
+    if (freshInput) return;   // no borrar tras resultado
+    clearStateClasses();
+    inputStr = inputStr.length > 1 ? inputStr.slice(0, -1) : '0';
+    setVal(inputStr);
+  }
+
+  /* CLEAR */
+  function onClear() {
+    accumulator = null;
+    pendingOp   = null;
+    inputStr    = '0';
+    freshInput  = false;
+    isError     = false;
+    clearStateClasses();
+    clearOpHL();
+    setVal('0');
+    setExpr('\u00a0');
+  }
+
+  /* ═══════════════ ripple ════════════════ */
+  function spawnRipple(btn, e) {
+    const rc  = btn.getBoundingClientRect();
+    const s   = Math.max(rc.width, rc.height);
+    const el  = document.createElement('span');
+    el.className = 'rpl';
+    el.style.cssText = `
+      width:${s}px; height:${s}px;
+      left:${e.clientX - rc.left - s/2}px;
+      top:${e.clientY - rc.top  - s/2}px`;
+    btn.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+
+  /* ═══════════════ delegación de clicks ════════════════ */
+  $pad.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    spawnRipple(btn, e);
+
+    const fn = btn.dataset.fn;
+    if      (fn === 'num')   onNum(btn.dataset.n);
+    else if (fn === 'dot')   onDot();
+    else if (fn === 'sign')  onSign();
+    else if (fn === 'op')    onOp(btn.dataset.op);
+    else if (fn === 'eq')    onEq();
+    else if (fn === 'back')  onBack();
+    else if (fn === 'clear') onClear();
+  });
+
+  /* ═══════════════ teclado ════════════════ */
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9')            { e.preventDefault(); onNum(e.key); }
+    else if (e.key === '.')                        { e.preventDefault(); onDot(); }
+    else if (e.key === '+')                        { e.preventDefault(); onOp('+'); }
+    else if (e.key === '-')                        { e.preventDefault(); onOp('-'); }
+    else if (e.key === '*')                        { e.preventDefault(); onOp('*'); }
+    else if (e.key === '/')                        { e.preventDefault(); onOp('/'); }
+    else if (e.key === 'Enter' || e.key === '=')   { e.preventDefault(); onEq(); }
+    else if (e.key === 'Backspace')                { e.preventDefault(); onBack(); }
+    else if (e.key === 'Escape' || e.key === 'Delete') { e.preventDefault(); onClear(); }
+  });
+
+  /* ═══════════════ init ════════════════ */
+  setVal('0');
+  setExpr('\u00a0');
+
+})();
+</script>
+
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║         GIT + GITHUB CLI — COMANDOS PARA TERMINAL           ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Requisitos previos:                                         ║
+║    git  →  https://git-scm.com                               ║
+║    gh   →  https://cli.github.com                            ║
+║    autenticado  →  gh auth login                             ║
+║                                                              ║
+║  1. Inicializar repositorio local                            ║
+║  ─────────────────────────────────────────────────────────   ║
+║    git init                                                  ║
+║    git add index.html                                        ║
+║    git commit -m "feat: calculadora practica #4 clis"       ║
+║                                                              ║
+║  2. Crear repo en GitHub y subir (un solo comando)          ║
+║  ─────────────────────────────────────────────────────────   ║
+║    gh repo create calculadora-clis-4 \                       ║
+║      --public \                                              ║
+║      --source=. \                                            ║
+║      --remote=origin \                                       ║
+║      --push                                                  ║
+║                                                              ║
+║  3. Verificar en el navegador                                ║
+║  ─────────────────────────────────────────────────────────   ║
+║    gh repo view --web                                        ║
+║                                                              ║
+║  ── Repo privado → reemplazar --public por --private ──     ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+</body>
+</html>
